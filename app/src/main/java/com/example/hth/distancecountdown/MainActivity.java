@@ -114,6 +114,7 @@ public class MainActivity extends Activity implements LocationListener {
     public void startButtonHandler(View view) {
         if (!mCountdownRunning) {
             mCountdownRunning = true;
+            mDistanceView.setEnabled(false);
             setButtons();
         }
         else{
@@ -126,7 +127,10 @@ public class MainActivity extends Activity implements LocationListener {
      * Handles the Reset button
      */
     public void resetButtonHandler(View view) {
-
+        mResetButton.setEnabled(false);
+        mDistanceView.setEnabled(true);
+        mStartButton.setText(R.string.start);
+        mStartButton.setEnabled(true);
     }
 
     private void setButtons() {
@@ -134,7 +138,15 @@ public class MainActivity extends Activity implements LocationListener {
             mStartButton.setText(R.string.stop);
             mResetButton.setEnabled(false);
         } else {
-            mStartButton.setText(R.string.start);
+            if(mDistanceView.getText().toString().equals("0")) {
+                Log.i(TAG, "StartButton pressed, distance left == 0");
+                mStartButton.setText(R.string.start);
+                mStartButton.setEnabled(false);
+            }
+            else {
+                Log.i(TAG, "StartButton pressed");
+                mStartButton.setText(R.string.resume);
+            }
             mResetButton.setEnabled(true);
         }
     }
