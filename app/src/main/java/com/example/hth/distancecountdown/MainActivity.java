@@ -1,70 +1,90 @@
 package com.example.hth.distancecountdown;
 
 import android.app.Activity;
-import android.location.Location;
+import android.content.Intent;
+import android.content.SharedPreferences;
 import android.os.Bundle;
+import android.os.SystemClock;
 import android.view.Menu;
 import android.view.MenuItem;
 
 import android.util.Log;
 import android.view.View;
 import android.widget.Button;
+import android.widget.Chronometer;
 import android.widget.EditText;
 import android.widget.TextView;
 
-import com.google.android.gms.location.LocationListener;
-import com.google.android.gms.location.LocationRequest;
 
 import java.text.DateFormat;
 import java.util.Date;
 
-public class MainActivity extends Activity implements LocationListener {
+public class MainActivity extends Activity {
 
     protected static final String TAG = "distance countdown";
 
-    public static final long UPDATE_INTERVAL_IN_MILLISECONDS = 10000;
-
-    public static final long FASTEST_UPDATE_INTERVAL_IN_MILLISECONDS =
-            UPDATE_INTERVAL_IN_MILLISECONDS / 2;
-
     // Keys for storing activity state in the Bundle.
     protected final static String COUNTDOWN_RUNNING_KEY = "countdown-running-key";
-    protected final static String LOCATION_KEY = "location-key";
+    protected final static String RESUME_COUNTDOWN_KEY = "resume-countdown-key";
+    protected final static String CLEAR_TIMER_KEY = "clear-timer-key";
+    protected final static String START_TIME_STRING_KEY = "start-time-string-key";
     protected final static String LAST_UPDATED_TIME_STRING_KEY = "last-updated-time-string-key";
-
-    
-    protected LocationRequest mLocationRequest;
-
-    protected Location mCurrentLocation;
+    protected final static String REMAINING_DISTANCE_KEY = "remaining-distance-key";
+    protected final static String ELAPSED_TIME_KEY = "elapsed-time-key";
+    protected final static String AVEGARE_SPEED_KEY = "average-speed-key";
 
     // UI Widgets.
-    protected Button mStartButton;
-    protected Button mResetButton;
-    protected TextView mTimeView;
-    protected TextView mSpeedView;
-    protected EditText mDistanceView;
+    private Button mStartButton;
+    private Button mResetButton;
+    private Chronometer mChronometer;
+    private TextView mSpeedView;
+    private EditText mDistanceView;
 
-    protected Boolean mCountdownRunning;
-    protected String mLastUpdateTime;
+    private Boolean mCountdownRunning;
+    private Boolean mResumeCountdown;
+    private String mStartTime;
+    private String mLastUpdateTime;
+
+    private int mDistanceLeft;
+	private long mElapsedTime;
+    private float mAverageSpeed;
+    private boolean mClearTimer;
+
+    private Intent mServiceIntent;
+
+    private SharedPreferences mPrefs;
 
     @Override
     public void onCreate(Bundle savedInstanceState) {
+        Log.i(TAG, "onCreate(" + (savedInstanceState != null) + ")");
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
         // Locate the UI widgets.
         mStartButton = (Button) findViewById(R.id.startButton);
         mResetButton = (Button) findViewById(R.id.resetButton);
-        mTimeView = (TextView) findViewById(R.id.timeView);
         mSpeedView = (TextView) findViewById(R.id.speedView);
         mDistanceView = (EditText) findViewById(R.id.distanceView);
-
+        mChronometer = (Chronometer) findViewById(R.id.chronometer);
+        mChronometer.setText("00:00:00");
+        mElapsedTime = 0;
+        mAverageSpeed = 0;
         mCountdownRunning = false;
-        mLastUpdateTime = "";
+        mResumeCountdown = false;
+        mPrefs = getSharedPreferences(this.getLocalClassName(), 0);
 
-        // Update values using data stored in the Bundle.
-        updateValuesFromBundle(savedInstanceState);
+        // Update values using data stored in the Bundle,
+        if(savedInstanceState != null) {
+            updateValuesFromBundle(savedInstanceState);
+        }
+        // or update values using data stored in SharedPreferences file.
+        else {
+            updateValuesFromSharedPreferences();
+        }
 
+        mServiceIntent = new Intent(this, LocationService.class);
+        mServiceIntent.setAction(Constants.ACTION.START_LOCATION_MANAGER);
+        startService(mServiceIntent);
     }
 
     /**
@@ -74,38 +94,100 @@ public class MainActivity extends Activity implements LocationListener {
      */
     private void updateValuesFromBundle(Bundle savedInstanceState) {
         Log.i(TAG, "Updating values from bundle");
-        if (savedInstanceState != null) {
-            // Update the value of mCountdownRunning from the Bundle, and make sure that
-            // buttons are correctly enabled or disabled.
-            if (savedInstanceState.keySet().contains(COUNTDOWN_RUNNING_KEY)) {
-                mCountdownRunning = savedInstanceState.getBoolean(
-                        COUNTDOWN_RUNNING_KEY);
-                setButtons();
-            }
 
-            // Update the value of mCurrentLocation from the Bundle and update the UI
-            if (savedInstanceState.keySet().contains(LOCATION_KEY)) {
-                mCurrentLocation = savedInstanceState.getParcelable(LOCATION_KEY);
-            }
-
-            // Update the value of mLastUpdateTime from the Bundle and update the UI.
-            if (savedInstanceState.keySet().contains(LAST_UPDATED_TIME_STRING_KEY)) {
-                mLastUpdateTime = savedInstanceState.getString(LAST_UPDATED_TIME_STRING_KEY);
-            }
-            updateUI();
+        // Update the values from the Bundle and make sure that
+        // buttons are correctly enabled or disabled.
+        if (savedInstanceState.keySet().contains(RESUME_COUNTDOWN_KEY)) {
+            mResumeCountdown = savedInstanceState.getBoolean(RESUME_COUNTDOWN_KEY);
+            Log.i(TAG, "mResumeCountdown == " + mResumeCountdown);
         }
+
+        if (savedInstanceState.keySet().contains(COUNTDOWN_RUNNING_KEY)) {
+            mCountdownRunning = savedInstanceState.getBoolean(COUNTDOWN_RUNNING_KEY);
+            Log.i(TAG, "mCountdownRunning == " + mCountdownRunning);
+            setButtons();
+        }
+
+        if (savedInstanceState.keySet().contains(CLEAR_TIMER_KEY)) {
+            mClearTimer = savedInstanceState.getBoolean(CLEAR_TIMER_KEY);
+            Log.i(TAG, "mClearTimer == " + mClearTimer);
+        }
+
+        if (savedInstanceState.keySet().contains(START_TIME_STRING_KEY)) {
+            mStartTime = savedInstanceState.getString(START_TIME_STRING_KEY);
+            Log.i(TAG, "mStartTime == " + mStartTime);
+        }
+
+        if (savedInstanceState.keySet().contains(LAST_UPDATED_TIME_STRING_KEY)) {
+            mLastUpdateTime = savedInstanceState.getString(LAST_UPDATED_TIME_STRING_KEY);
+            Log.i(TAG, "mLastUpdateTime == " + mLastUpdateTime);
+        }
+
+        if (savedInstanceState.keySet().contains(REMAINING_DISTANCE_KEY)) {
+            mDistanceLeft = savedInstanceState.getInt(REMAINING_DISTANCE_KEY);
+            Log.i(TAG, "mDistanceLeft == " + mDistanceLeft);
+            mDistanceView.setText(String.valueOf(mDistanceLeft));
+        }
+
+        if (savedInstanceState.keySet().contains(ELAPSED_TIME_KEY)) {
+            mElapsedTime = savedInstanceState.getLong(ELAPSED_TIME_KEY);
+            Log.i(TAG, "mElapsedTime == " + mElapsedTime);
+        }
+
+        if (savedInstanceState.keySet().contains(AVEGARE_SPEED_KEY)) {
+            mAverageSpeed = savedInstanceState.getLong(AVEGARE_SPEED_KEY);
+            Log.i(TAG, "mAverageSpeed == " + mAverageSpeed);
+        }
+
+        updateUI();
     }
 
-    protected void createLocationRequest() {
-        mLocationRequest = new LocationRequest();
+    private void updateValuesFromSharedPreferences() {
+        Log.i(TAG, "updateValuesFromSharedPreferences()");
 
-        // Set the desired interval for active location updates
-        mLocationRequest.setInterval(UPDATE_INTERVAL_IN_MILLISECONDS);
+        if (mPrefs.contains(RESUME_COUNTDOWN_KEY)) {
+            mResumeCountdown = mPrefs.getBoolean(RESUME_COUNTDOWN_KEY, false);
+            Log.i(TAG, "mResumeCountdown == " + mResumeCountdown);
+        }
 
-        // Set the fastest rate for active location updates.
-        mLocationRequest.setFastestInterval(FASTEST_UPDATE_INTERVAL_IN_MILLISECONDS);
+        if (mPrefs.contains(COUNTDOWN_RUNNING_KEY)) {
+            mCountdownRunning = mPrefs.getBoolean( COUNTDOWN_RUNNING_KEY, false);
+            Log.i(TAG, "mCountdownRunning == " + mCountdownRunning);
+            setButtons();
+        }
 
-        mLocationRequest.setPriority(LocationRequest.PRIORITY_HIGH_ACCURACY);
+        if (mPrefs.contains(CLEAR_TIMER_KEY)) {
+            mClearTimer = mPrefs.getBoolean( CLEAR_TIMER_KEY, false);
+            Log.i(TAG, "mClearTimer == " + mClearTimer);
+        }
+
+        if (mPrefs.contains(START_TIME_STRING_KEY)) {
+            mStartTime = mPrefs.getString(START_TIME_STRING_KEY, null);
+            Log.i(TAG, "mStartTime == " + mStartTime);
+        }
+
+        if (mPrefs.contains(LAST_UPDATED_TIME_STRING_KEY)) {
+            mLastUpdateTime = mPrefs.getString(LAST_UPDATED_TIME_STRING_KEY, null);
+            Log.i(TAG, "mLastUpdateTime == " + mLastUpdateTime);
+        }
+
+        if (mPrefs.contains(REMAINING_DISTANCE_KEY)) {
+            mDistanceLeft = mPrefs.getInt(REMAINING_DISTANCE_KEY, 1000);
+            Log.i(TAG, "mDistanceLeft == " + mDistanceLeft);
+            mDistanceView.setText(String.valueOf(mDistanceLeft));
+        }
+
+        if (mPrefs.contains(ELAPSED_TIME_KEY)) {
+            mElapsedTime = mPrefs.getLong(ELAPSED_TIME_KEY, 0);
+            Log.i(TAG, "mElapsedTime == " + mElapsedTime);
+        }
+
+        if (mPrefs.contains(AVEGARE_SPEED_KEY)) {
+            mAverageSpeed = mPrefs.getFloat(AVEGARE_SPEED_KEY, 0);
+            Log.i(TAG, "mAverageSpeed == " + mAverageSpeed);
+        }
+
+        updateUI();
     }
 
     /**
@@ -114,12 +196,28 @@ public class MainActivity extends Activity implements LocationListener {
     public void startButtonHandler(View view) {
         if (!mCountdownRunning) {
             mCountdownRunning = true;
+
+            mDistanceLeft = Integer.parseInt(mDistanceView.getText().toString());
+            mStartTime = DateFormat.getTimeInstance().format(new Date());
             mDistanceView.setEnabled(false);
-            setButtons();
+
+            mStartButton.setText(R.string.stop);
+            mResetButton.setEnabled(false);
+
+            mServiceIntent.setAction(Constants.ACTION.START_LOCATION_UPDATES);
+            startService(mServiceIntent);
         }
         else{
             mCountdownRunning = false;
-            setButtons();
+            if(mDistanceView.getText().toString().equals("0")) {
+                mStartButton.setText(R.string.start);
+                mStartButton.setEnabled(false);
+            }
+            else {
+                mStartButton.setText(R.string.resume);
+                mResumeCountdown = true;
+            }
+            mResetButton.setEnabled(true);
         }
     }
 
@@ -131,23 +229,32 @@ public class MainActivity extends Activity implements LocationListener {
         mDistanceView.setEnabled(true);
         mStartButton.setText(R.string.start);
         mStartButton.setEnabled(true);
+        mChronometer.setText("00:00:00");
+        mSpeedView.setText("0.0 km/h");
+        mResumeCountdown = false;
+        mClearTimer = true;
+        
+        mServiceIntent.setAction(Constants.ACTION.STOP_LOCATION_UPDATES);
+        startService(mServiceIntent);
     }
 
     private void setButtons() {
+        Log.i(TAG, "setButtons(" + mCountdownRunning + ")");
         if (mCountdownRunning) {
             mStartButton.setText(R.string.stop);
             mResetButton.setEnabled(false);
+            mDistanceView.setEnabled(false);
         } else {
-            if(mDistanceView.getText().toString().equals("0")) {
-                Log.i(TAG, "StartButton pressed, distance left == 0");
-                mStartButton.setText(R.string.start);
-                mStartButton.setEnabled(false);
+            if(mResumeCountdown) {
+                mStartButton.setText(R.string.resume);
+                mDistanceView.setEnabled(false);
+                mResetButton.setEnabled(true);
             }
             else {
-                Log.i(TAG, "StartButton pressed");
-                mStartButton.setText(R.string.resume);
+                mStartButton.setText(R.string.start);
+                mDistanceView.setEnabled(true);
             }
-            mResetButton.setEnabled(true);
+            mStartButton.setEnabled(true);
         }
     }
 
@@ -155,34 +262,77 @@ public class MainActivity extends Activity implements LocationListener {
      * Updates the distance, average speed and elapsed time in the UI.
      */
     private void updateUI() {
-        if (mCurrentLocation != null) {
             //mDistanceView.setText();
             //mSpeedView.setText();
-            //mTimeView.setText();
-        }
-    }
-
-    /**
-     * Callback that fires when the location changes.
-     */
-    @Override
-    public void onLocationChanged(Location location) {
-        mCurrentLocation = location;
-        mLastUpdateTime = DateFormat.getTimeInstance().format(new Date());
-        updateUI();
+            //mChronometer.setText();
     }
 
 
     /**
      * Stores activity data in the Bundle.
      */
+    @Override
     public void onSaveInstanceState(Bundle savedInstanceState) {
+        Log.i(TAG, "onSaveInstanceState");
+
         savedInstanceState.putBoolean(COUNTDOWN_RUNNING_KEY, mCountdownRunning);
-        savedInstanceState.putParcelable(LOCATION_KEY, mCurrentLocation);
+        Log.i(TAG, "mCountdownRunning == " + mCountdownRunning);
+
+        savedInstanceState.putBoolean(RESUME_COUNTDOWN_KEY, mResumeCountdown);
+        Log.i(TAG, "mResumeCountdown == " + mResumeCountdown);
+
+        savedInstanceState.putBoolean(CLEAR_TIMER_KEY, mClearTimer);
+        Log.i(TAG, "mClearTimer == " + mClearTimer);
+
+        savedInstanceState.putString(START_TIME_STRING_KEY, mStartTime);
+        Log.i(TAG, "mStartTime == " + mStartTime);
+
         savedInstanceState.putString(LAST_UPDATED_TIME_STRING_KEY, mLastUpdateTime);
+        Log.i(TAG, "mLastUpdateTime == " + mLastUpdateTime);
+
+        savedInstanceState.putInt(REMAINING_DISTANCE_KEY, mDistanceLeft);
+        Log.i(TAG, "mDistanceLeft == " + mDistanceLeft);
+
+        savedInstanceState.putLong(ELAPSED_TIME_KEY, mElapsedTime);
+        Log.i(TAG, "mElapsedTime == " + mAverageSpeed);
+
+        savedInstanceState.putFloat(AVEGARE_SPEED_KEY, mAverageSpeed);
+        Log.i(TAG, "mAverageSpeed == " + mAverageSpeed);
+
         super.onSaveInstanceState(savedInstanceState);
     }
 
+
+    @Override
+    protected void onPause() {
+        Log.i(TAG, "onPause");
+        super.onPause();
+
+        SharedPreferences.Editor ed = mPrefs.edit();
+
+        ed.putBoolean(COUNTDOWN_RUNNING_KEY, mCountdownRunning);
+        Log.i(TAG, "mCountdownRunning == " + mCountdownRunning);
+
+        ed.putBoolean(RESUME_COUNTDOWN_KEY, mResumeCountdown);
+        Log.i(TAG, "mResumeCountdown == " + mResumeCountdown);
+
+        ed.putBoolean(CLEAR_TIMER_KEY, mClearTimer);
+        Log.i(TAG, "mClearTimer == " + mClearTimer);
+
+        ed.putString(START_TIME_STRING_KEY, mStartTime);
+        Log.i(TAG, "mStartTime == " + mStartTime);
+
+        ed.putString(LAST_UPDATED_TIME_STRING_KEY, mLastUpdateTime);
+        Log.i(TAG, "mLastUpdateTime == " + mLastUpdateTime);
+
+        ed.putInt(REMAINING_DISTANCE_KEY, mDistanceLeft);
+        Log.i(TAG, "mDistanceLeft == " + mDistanceLeft);
+
+        ed.putFloat(AVEGARE_SPEED_KEY, mAverageSpeed);
+        Log.i(TAG, "mAverageSpeed == " + mAverageSpeed);
+
+        ed.commit();
+    }
 
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
@@ -205,4 +355,5 @@ public class MainActivity extends Activity implements LocationListener {
 
         return super.onOptionsItemSelected(item);
     }
+
 }
