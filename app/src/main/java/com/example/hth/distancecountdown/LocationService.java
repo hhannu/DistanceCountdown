@@ -9,9 +9,13 @@ import android.location.Location;
 import android.location.LocationManager;
 import android.location.LocationListener;
 import android.os.Bundle;
+import android.os.Handler;
 import android.os.IBinder;
 import android.support.v4.app.NotificationCompat;
 import android.util.Log;
+
+import java.util.Timer;
+import java.util.TimerTask;
 
 /**
  * Created by hth on 9/16/15.
@@ -25,8 +29,15 @@ public class LocationService extends Service {
 
     private LocationManager mLocationManager = null;
     private boolean mLocating = false;
+    private Timer mTimer = null;
+    private TimerTask mTimerTask;
+    private final Handler mHandler = new Handler();
+    private boolean mTimerRunning = false;
+    private long mElapsedTime = 0;
 
-    LocationListener mLocationListener = new MyLocationListener(LocationManager.GPS_PROVIDER);
+    LocationListener mLocationListener = new MyLocationListener(LocationManager.GPS_PROVIDER, this);
+
+    Intent locationIntent = new Intent(Constants.ACTION.BROADCAST);
 
     @Override
     public IBinder onBind(Intent arg0)
@@ -36,10 +47,12 @@ public class LocationService extends Service {
 
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
-        Log.e(TAG, "onStartCommand()");
-
-        if (intent.getAction().equals(Constants.ACTION.START_LOCATION_MANAGER)) {
-            Log.i(TAG, "Received Start Location Manager Intent");
+        Log.d(TAG, "onStartCommand()");
+        /**
+         * Starts Location updates
+         */
+        if (intent.getAction().equals(Constants.ACTION.START_LOCATION_UPDATES)) {
+            Log.d(TAG, "Start Location Updates");
 
             if (mLocationManager == null) {
                 mLocationManager = (LocationManager) getApplicationContext()
@@ -51,22 +64,14 @@ public class LocationService extends Service {
                     LocationManager.GPS_PROVIDER, LOCATION_INTERVAL, LOCATION_DISTANCE,
                     mLocationListener);
             } catch (java.lang.SecurityException ex) {
-                Log.i(TAG, "Failed to request location update. ", ex);
+                Log.d(TAG, "Failed to request location update. ", ex);
             } catch (IllegalArgumentException ex) {
                 Log.d(TAG, "GPS provider doesn't exist. " + ex.getMessage());
             }
-        }
-        else if (intent.getAction().equals(Constants.ACTION.STOP_LOCATION_MANAGER)) {
-            Log.i(TAG, "Received Stop Location Manager Intent");
-            stopLocationManager();
-        }
-        else if (intent.getAction().equals(Constants.ACTION.START_LOCATION_UPDATES)) {
-            Log.i(TAG, "Received Start Location Updates Intent");
 
             Intent notificationIntent = new Intent(this, MainActivity.class);
-            //notificationIntent.setAction(Constants.ACTION.MAIN_ACTION);
-notificationIntent.setAction(Intent.ACTION_MAIN);
-notificationIntent.addCategory(Intent.CATEGORY_LAUNCHER);
+            notificationIntent.setAction(Intent.ACTION_MAIN);
+            notificationIntent.addCategory(Intent.CATEGORY_LAUNCHER);
             PendingIntent pendingIntent = PendingIntent.getActivity(this, 0, notificationIntent,
                     PendingIntent.FLAG_UPDATE_CURRENT);
 
@@ -77,25 +82,75 @@ notificationIntent.addCategory(Intent.CATEGORY_LAUNCHER);
                 .setContentIntent(pendingIntent).build();
 
             startForeground(Constants.NOTIFICATION_ID.FOREGROUND_SERVICE, notification);
+
+            if (mTimer == null) {
+                mElapsedTime = 0;
+                mTimer = new Timer();
+                initializeTimerTask();
+                mTimer.schedule(mTimerTask, 1000, 1000);
+            }
         }
+        /**
+         * Stops Location updates
+         */
         else if (intent.getAction().equals(Constants.ACTION.STOP_LOCATION_UPDATES)) {
-            Log.i(TAG, "Received Stop Location Updates Intent");
+            Log.d(TAG, "Stop Location Updates");
+            if (mTimer != null) {
+                mTimer.cancel();
+                mTimer = null;
+            }
+            mTimerRunning = false;
             stopForeground(true);
+            stopLocationManager();
             stopSelf();
+        }
+        /**
+         * Starts timer
+         */
+        else if (intent.getAction().equals(Constants.ACTION.START_TIMER)) {
+            Log.d(TAG, "Start Timer");
+            mTimerRunning = true;
+        }
+        /**
+         * Stops timer
+         */
+        else if (intent.getAction().equals(Constants.ACTION.STOP_TIMER)) {
+            Log.d(TAG, "Stop Timer");
+            mTimerRunning = false;
         }
         return START_STICKY;
     }
 
+    private void initializeTimerTask() {
+        mTimerTask = new TimerTask() {
+            @Override
+            public void run() {
+                mHandler.post(new Runnable() {
+                    @Override
+                    public void run() {
+                        if(mTimerRunning) {
+                            mElapsedTime++;
+                            Intent intent = new Intent(Constants.ACTION.BROADCAST);
+                            intent.putExtra(Constants.STATUS.ELAPSED_TIME_CHANGED, mElapsedTime);
+                            sendBroadcast(intent);
+                        }
+                    }
+                });
+            }
+        };
+    }
+
     @Override
     public void onCreate() {
-        Log.e(TAG, "onCreate()");
+        Log.d(TAG, "onCreate()");
     }
 
     @Override
     public void onDestroy() {
-        Log.e(TAG, "onDestroy()");
+        Log.d(TAG, "onDestroy()");
 
         stopLocationManager();
+        stopSelf();
     }
 
     private void stopLocationManager() {
@@ -103,7 +158,7 @@ notificationIntent.addCategory(Intent.CATEGORY_LAUNCHER);
             try {
                 mLocationManager.removeUpdates(mLocationListener);
             } catch (Exception ex) {
-                Log.i(TAG, "Failed to remove location listener. ", ex);
+                Log.d(TAG, "Failed to remove location listener. ", ex);
             }
             mLocationManager = null;
         }
@@ -114,11 +169,13 @@ notificationIntent.addCategory(Intent.CATEGORY_LAUNCHER);
      */
     private class MyLocationListener implements LocationListener {
 
-        Location mLastLocation;
+        private Location mLastLocation;
+        Context context;
 
-        public MyLocationListener(String provider) {
-            Log.e(TAG, "LocationListener " + provider);
+        public MyLocationListener(String provider, Context context) {
+            Log.d(TAG, "LocationListener " + provider);
             mLastLocation = new Location(provider);
+            this.context = context;
         }
 
         /**
@@ -127,24 +184,27 @@ notificationIntent.addCategory(Intent.CATEGORY_LAUNCHER);
          */
         @Override
         public void onLocationChanged(Location location) {
-            Log.e(TAG, "onLocationChanged(" + location + ")");
+            Log.d(TAG, "onLocationChanged(" + location + ")");
             mLastLocation.set(location);
+
+            Intent intent = locationIntent.putExtra(Constants.STATUS.LOCATION_CHANGED, 0);
+
+            context.sendBroadcast(intent);
         }
 
         @Override
         public void onProviderDisabled(String provider) {
-            Log.e(TAG, "onProviderDisabled(" + provider + ")");
+            Log.d(TAG, "onProviderDisabled(" + provider + ")");
         }
 
         @Override
         public void onProviderEnabled(String provider) {
-            Log.e(TAG, "onProviderEnabled(" + provider + ")");
+            Log.d(TAG, "onProviderEnabled(" + provider + ")");
         }
 
         @Override
         public void onStatusChanged(String provider, int status, Bundle extras) {
-            Log.e(TAG, "onStatusChanged(" + provider + ", " + status + ")");
+            Log.d(TAG, "onStatusChanged(" + provider + ", " + status + ")");
         }
     }
-
 }
