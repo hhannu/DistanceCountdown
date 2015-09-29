@@ -93,12 +93,22 @@
                 android:text="0.0 km/h" />
         </LinearLayout>
 
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:textAppearance="?android:attr/textAppearanceSmall"
+            android:text="Small Text"
+            android:id="@+id/gpsStatus"
+            android:layout_gravity="center"
+            android:layout_weight="0.04"
+            android:layout_marginTop="5pt" />
+
         <LinearLayout
             android:orientation="horizontal"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:gravity="center_horizontal"
-            android:layout_marginTop="10pt">
+            android:layout_marginTop="5pt">
 
             <Button
                 android:layout_width="50pt"

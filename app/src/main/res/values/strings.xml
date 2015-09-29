@@ -13,4 +13,6 @@
     <string name="pause">Pause</string>
     <string name="resume">Resume</string>
 
+    <string name="gps_ok">GPS Ok</string>
+    <string name="gps_not_ok">No GPS</string>
 </resources>

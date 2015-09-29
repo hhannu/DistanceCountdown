@@ -11,11 +11,14 @@ public class Constants {
         String STOP_LOCATION_UPDATES = "com.example.hth.distancecountdown.stop_locationupdates";
         String START_TIMER = "com.example.hth.distancecountdown.start_timer";
         String STOP_TIMER = "com.example.hth.distancecountdown.stop_timer";
+        String RESET = "com.example.hth.distancecountdown.reset";
     }
 
     public interface STATUS {
         String ELAPSED_TIME_CHANGED = "com.example.hth.distancecountdown.action.time_changed";
         String LOCATION_CHANGED = "com.example.hth.distancecountdown.action.location_changed";
+        String GPS_OK = "com.example.hth.distancecountdown.gps_ok";
+        String GPS_NOT_OK = "com.example.hth.distancecountdown.gps_not_ok";
     }
 
     public interface NOTIFICATION_ID {
