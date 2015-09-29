@@ -28,7 +28,6 @@ public class LocationService extends Service {
     private static final String TAG = "DCD_LOCATIONSERVICE";
 
     private LocationManager mLocationManager = null;
-    private boolean mLocating = false;
     private Timer mTimer = null;
     private TimerTask mTimerTask;
     private final Handler mHandler = new Handler();
@@ -41,8 +40,7 @@ public class LocationService extends Service {
     Intent locationIntent = new Intent(Constants.ACTION.BROADCAST);
 
     @Override
-    public IBinder onBind(Intent arg0)
-    {
+    public IBinder onBind(Intent arg0) {
         return null;
     }
 
@@ -60,7 +58,7 @@ public class LocationService extends Service {
                         .getSystemService(Context.LOCATION_SERVICE);
             }
 
-			mLocationManager.addGpsStatusListener(MyGPSListener);
+            mLocationManager.addGpsStatusListener(MyGPSListener);
 
             requestLocationUpdates(1000);
 
@@ -71,10 +69,10 @@ public class LocationService extends Service {
                     PendingIntent.FLAG_UPDATE_CURRENT);
 
             Notification notification = new NotificationCompat.Builder(this)
-                .setSmallIcon(R.drawable.icon)
-                .setContentTitle("DistanceCountdown")
-                .setContentText("")
-                .setContentIntent(pendingIntent).build();
+                    .setSmallIcon(R.drawable.icon)
+                    .setContentTitle("DistanceCountdown")
+                    .setContentText("")
+                    .setContentIntent(pendingIntent).build();
 
             startForeground(Constants.NOTIFICATION_ID.FOREGROUND_SERVICE, notification);
 
@@ -105,7 +103,6 @@ public class LocationService extends Service {
         else if (intent.getAction().equals(Constants.ACTION.START_TIMER)) {
             Log.d(TAG, "Start Timer");
             mTimerRunning = true;
-            requestLocationUpdates(1000);
         }
         /**
          * Stops timer
@@ -113,22 +110,28 @@ public class LocationService extends Service {
         else if (intent.getAction().equals(Constants.ACTION.STOP_TIMER)) {
             Log.d(TAG, "Stop Timer");
             mTimerRunning = false;
-            requestLocationUpdates(10000);
         }
+        /**
+         * Reset
+         */
         else if (intent.getAction().equals(Constants.ACTION.RESET)) {
             Log.d(TAG, "Reset");
+            mTimerRunning = false;
             mDistance = 0;
             mElapsedTime = 0;
-            mTimerRunning = false;
         }
 
         return START_STICKY;
     }
 
+    /**
+     * Set location updates to specified interval.
+     * @param time in milliseconds
+     */
     private void requestLocationUpdates(int time) {
         try {
             mLocationManager.requestLocationUpdates(
-                    LocationManager.GPS_PROVIDER, time, 0, mLocationListener);
+                    LocationManager.GPS_PROVIDER, time, 2, mLocationListener);
         } catch (java.lang.SecurityException ex) {
             Log.e(TAG, "Failed to request location update. ", ex);
         } catch (IllegalArgumentException ex) {
@@ -143,7 +146,7 @@ public class LocationService extends Service {
                 mHandler.post(new Runnable() {
                     @Override
                     public void run() {
-                        if(mTimerRunning) {
+                        if (mTimerRunning) {
                             mElapsedTime++;
                             Intent intent = new Intent(Constants.ACTION.BROADCAST);
                             intent.putExtra(Constants.STATUS.ELAPSED_TIME_CHANGED, mElapsedTime);
@@ -185,29 +188,36 @@ public class LocationService extends Service {
     private class MyLocationListener implements LocationListener {
 
         private Location mLastLocation;
-        Context context;
+        Context mContext;
 
         public MyLocationListener(String provider, Context context) {
             Log.d(TAG, "LocationListener " + provider);
             mLastLocation = new Location(provider);
-            this.context = context;
+            mContext = context;
         }
 
         /**
          * Handle location updates
+         *
          * @param location
          */
         @Override
         public void onLocationChanged(Location location) {
             Log.d(TAG, "onLocationChanged(" + location + ")");
-            if(mTimerRunning) {
-                mDistance = mDistance + (int) location.distanceTo(mLastLocation);
-                mLastLocation.set(location);
+
+            if (mTimerRunning) {
+                int distance = mDistance + (int) location.distanceTo(mLastLocation);
+                //TODO: check distance accuracy
 
                 // Send intent for location change.
-                Intent intent = locationIntent.putExtra(Constants.STATUS.LOCATION_CHANGED, mDistance);
-                context.sendBroadcast(intent);
+                if(distance != mDistance) {
+                    mDistance = distance;
+                    Intent intent = locationIntent.putExtra(Constants.STATUS.LOCATION_CHANGED, mDistance);
+                    mContext.sendBroadcast(intent);
+                }
             }
+
+            mLastLocation = location;
         }
 
         @Override
@@ -223,13 +233,12 @@ public class LocationService extends Service {
         @Override
         public void onStatusChanged(String provider, int status, Bundle extras) {
             Log.d(TAG, "onStatusChanged(" + provider + ", " + status + ")");
-            if(status == LocationProvider.OUT_OF_SERVICE || status == LocationProvider.TEMPORARILY_UNAVAILABLE) {
+            if (status == LocationProvider.OUT_OF_SERVICE || status == LocationProvider.TEMPORARILY_UNAVAILABLE) {
                 Intent intent = locationIntent.putExtra(Constants.STATUS.GPS_NOT_OK, mDistance);
-                context.sendBroadcast(intent);
-            }
-            else {
+                mContext.sendBroadcast(intent);
+            } else {
                 Intent intent = locationIntent.putExtra(Constants.STATUS.GPS_OK, mDistance);
-                context.sendBroadcast(intent);
+                mContext.sendBroadcast(intent);
             }
         }
     }
@@ -243,7 +252,7 @@ public class LocationService extends Service {
 
             Intent intent;
 
-            switch( event ) {
+            switch (event) {
                 case GpsStatus.GPS_EVENT_STARTED:
                     Log.d("MyGPSListener", "gps event started");
                     break;
@@ -262,8 +271,8 @@ public class LocationService extends Service {
                     Log.d("MyGPSListener", "gps event satellite status");
                     int count = 0;
                     GpsStatus status = mLocationManager.getGpsStatus(null);
-                    for(GpsSatellite sat : status.getSatellites()) {
-                        if(sat.usedInFix()) {
+                    for (GpsSatellite sat : status.getSatellites()) {
+                        if (sat.usedInFix()) {
                             count++;
                         }
                     }
