@@ -12,6 +12,8 @@ import android.location.Location;
 import android.location.LocationManager;
 import android.location.LocationListener;
 import android.location.LocationProvider;
+import android.media.RingtoneManager;
+import android.net.Uri;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.IBinder;
@@ -87,7 +89,7 @@ public class LocationService extends Service {
 
             mTargetDistance = intent.getIntExtra(Constants.STATUS.DISTANCE, 0);
 
-            startForeground(Constants.NOTIFICATION_ID.FOREGROUND_SERVICE, createNotification());
+            startForeground(Constants.NOTIFICATION_ID.FOREGROUND_SERVICE, createNotification(false));
 
             if (mTimer == null) {
                 mElapsedTime = 0;
@@ -105,15 +107,15 @@ public class LocationService extends Service {
             Log.d(TAG, "Pause Timer " + mTimerRunning);
             mTimerRunning = !mTimerRunning;
             mNotificationManager.notify(Constants.NOTIFICATION_ID.FOREGROUND_SERVICE,
-                    createNotification());
+                    createNotification(false));
         }
         /**
          * Stops timer
          */
-        else if (intent.getAction().equals(Constants.ACTION.PAUSE_TIMER)) {
+        else if (intent.getAction().equals(Constants.ACTION.STOP_TIMER)) {
             Log.d(TAG, "Stop Timer");
             mNotificationManager.notify(Constants.NOTIFICATION_ID.FOREGROUND_SERVICE,
-                    createNotification());
+                    createNotification(true));
             mTimerRunning = false;
         }
         /**
@@ -162,7 +164,7 @@ public class LocationService extends Service {
                             sendBroadcast(intent);
                             mNotificationManager.notify(
                                     Constants.NOTIFICATION_ID.FOREGROUND_SERVICE,
-                                    createNotification());
+                                    createNotification(false));
                         }
                     }
                 });
@@ -196,12 +198,20 @@ public class LocationService extends Service {
         }
     }
 
-    private Notification createNotification() {
+    private Notification createNotification(boolean playSound) {
         Intent notificationIntent = new Intent(this, MainActivity.class);
         notificationIntent.setAction(Intent.ACTION_MAIN);
         notificationIntent.addCategory(Intent.CATEGORY_LAUNCHER);
         PendingIntent pendingIntent = PendingIntent.getActivity(this, 0, notificationIntent,
                 PendingIntent.FLAG_UPDATE_CURRENT);
+
+        Uri soundUri;
+        if(playSound) {
+            soundUri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION);
+        }
+        else {
+            soundUri = Uri.EMPTY;
+        }
 
         long secs = mElapsedTime;
         long hours = secs / 3600;
@@ -215,6 +225,7 @@ public class LocationService extends Service {
                         + String.format("%02d:%02d:%02d, ", hours, minutes, seconds)
                         + ((mTargetDistance - mDistance <= 0) ? 0 : (mTargetDistance - mDistance))
                         + "/" + mTargetDistance + " m")
+                .setSound(soundUri)
                 .setContentIntent(pendingIntent).build();
 
         return notification;
@@ -254,7 +265,7 @@ public class LocationService extends Service {
                             Constants.STATUS.LOCATION_CHANGED, mDistance);
                     mContext.sendBroadcast(intent);
                     mNotificationManager.notify(Constants.NOTIFICATION_ID.FOREGROUND_SERVICE,
-                            createNotification());
+                            createNotification(false));
                 }
             }
 
