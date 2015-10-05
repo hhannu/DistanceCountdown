@@ -11,6 +11,7 @@
     <string name="start">Start</string>
     <string name="stop">Stop</string>
     <string name="pause">Pause</string>
+    <string name="paused">paused</string>
     <string name="resume">Resume</string>
 
     <string name="gps_ok">GPS Ok</string>

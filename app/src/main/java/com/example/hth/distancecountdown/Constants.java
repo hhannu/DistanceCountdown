@@ -10,6 +10,7 @@ public class Constants {
         String START_LOCATION_UPDATES = "com.example.hth.distancecountdown.start_locationupdates";
         String STOP_LOCATION_UPDATES = "com.example.hth.distancecountdown.stop_locationupdates";
         String START_TIMER = "com.example.hth.distancecountdown.start_timer";
+        String PAUSE_TIMER = "com.example.hth.distancecountdown.pause_timer";
         String STOP_TIMER = "com.example.hth.distancecountdown.stop_timer";
         String RESET = "com.example.hth.distancecountdown.reset";
     }
@@ -19,6 +20,7 @@ public class Constants {
         String LOCATION_CHANGED = "com.example.hth.distancecountdown.action.location_changed";
         String GPS_OK = "com.example.hth.distancecountdown.gps_ok";
         String GPS_NOT_OK = "com.example.hth.distancecountdown.gps_not_ok";
+        String DISTANCE = "com.example.hth.distancecountdown.distance";
     }
 
     public interface NOTIFICATION_ID {

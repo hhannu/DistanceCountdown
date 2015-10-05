@@ -85,6 +85,7 @@ public class MainActivity extends Activity {
             updateValuesFromSharedPreferences();
         }
 
+
         mServiceIntent = new Intent(this, LocationService.class);
         mServiceIntent.setAction(Constants.ACTION.START_LOCATION_UPDATES);
         startService(mServiceIntent);
@@ -97,17 +98,25 @@ public class MainActivity extends Activity {
      * Handles the Start button
      */
     public void startButtonHandler(View view) {
+        // Start/resume countdown
         if (!mCountdownRunning) {
+            // Resume
+            if (mResumeCountdown) {
+                mServiceIntent.setAction(Constants.ACTION.PAUSE_TIMER);
+            }
+            // Start
+            else {
+                mDistance = Integer.parseInt(mDistanceView.getText().toString());
+                mStartTime = DateFormat.getTimeInstance().format(new Date());
+                mServiceIntent.setAction(Constants.ACTION.START_TIMER);
+                mServiceIntent.putExtra(Constants.STATUS.DISTANCE, mDistance);
+            }
+
             mCountdownRunning = true;
-
-            mDistance = Integer.parseInt(mDistanceView.getText().toString());
-            mStartTime = DateFormat.getTimeInstance().format(new Date());
             mDistanceView.setEnabled(false);
-
             mStartButton.setText(R.string.stop);
             mResetButton.setEnabled(false);
 
-            mServiceIntent.setAction(Constants.ACTION.START_TIMER);
             startService(mServiceIntent);
         } else {
             mCountdownRunning = false;
@@ -118,7 +127,7 @@ public class MainActivity extends Activity {
                 mStartButton.setText(R.string.resume);
                 mResumeCountdown = true;
 
-                mServiceIntent.setAction(Constants.ACTION.STOP_TIMER);
+                mServiceIntent.setAction(Constants.ACTION.PAUSE_TIMER);
                 startService(mServiceIntent);
             }
             mResetButton.setEnabled(true);
@@ -194,39 +203,39 @@ public class MainActivity extends Activity {
         // buttons are correctly enabled or disabled.
         if (savedInstanceState.keySet().contains(RESUME_COUNTDOWN_KEY)) {
             mResumeCountdown = savedInstanceState.getBoolean(RESUME_COUNTDOWN_KEY, false);
-            Log.i(TAG, "mResumeCountdown == " + mResumeCountdown);
+            //Log.i(TAG, "mResumeCountdown == " + mResumeCountdown);
         }
 
         if (savedInstanceState.keySet().contains(COUNTDOWN_RUNNING_KEY)) {
             mCountdownRunning = savedInstanceState.getBoolean(COUNTDOWN_RUNNING_KEY, false);
-            Log.i(TAG, "mCountdownRunning == " + mCountdownRunning);
+            //Log.i(TAG, "mCountdownRunning == " + mCountdownRunning);
             setButtons();
         }
 
         if (savedInstanceState.keySet().contains(CLEAR_TIMER_KEY)) {
             mClearTimer = savedInstanceState.getBoolean(CLEAR_TIMER_KEY, false);
-            Log.i(TAG, "mClearTimer == " + mClearTimer);
+            //Log.i(TAG, "mClearTimer == " + mClearTimer);
         }
 
         if (savedInstanceState.keySet().contains(START_TIME_STRING_KEY)) {
             mStartTime = savedInstanceState.getString(START_TIME_STRING_KEY, null);
-            Log.i(TAG, "mStartTime == " + mStartTime);
+            //Log.i(TAG, "mStartTime == " + mStartTime);
         }
 
         if (savedInstanceState.keySet().contains(REMAINING_DISTANCE_KEY)) {
             mDistance = savedInstanceState.getInt(REMAINING_DISTANCE_KEY, 1000);
-            Log.i(TAG, "mDistance == " + mDistance);
             mDistanceView.setText(String.valueOf(mDistance));
+            //Log.i(TAG, "mDistance == " + mDistance);
         }
 
         if (savedInstanceState.keySet().contains(ELAPSED_TIME_KEY)) {
             mElapsedTime = savedInstanceState.getLong(ELAPSED_TIME_KEY, 0);
-            Log.i(TAG, "mElapsedTime == " + mElapsedTime);
+            //Log.i(TAG, "mElapsedTime == " + mElapsedTime);
         }
 
         if (savedInstanceState.keySet().contains(AVEGARE_SPEED_KEY)) {
             mAverageSpeed = savedInstanceState.getFloat(AVEGARE_SPEED_KEY, 0);
-            Log.i(TAG, "mAverageSpeed == " + mAverageSpeed);
+            //Log.i(TAG, "mAverageSpeed == " + mAverageSpeed);
         }
 
         updateUI();
@@ -237,39 +246,39 @@ public class MainActivity extends Activity {
 
         if (mPrefs.contains(RESUME_COUNTDOWN_KEY)) {
             mResumeCountdown = mPrefs.getBoolean(RESUME_COUNTDOWN_KEY, false);
-            Log.i(TAG, "mResumeCountdown == " + mResumeCountdown);
+            //Log.i(TAG, "mResumeCountdown == " + mResumeCountdown);
         }
 
         if (mPrefs.contains(COUNTDOWN_RUNNING_KEY)) {
             mCountdownRunning = mPrefs.getBoolean(COUNTDOWN_RUNNING_KEY, false);
-            Log.i(TAG, "mCountdownRunning == " + mCountdownRunning);
+            //Log.i(TAG, "mCountdownRunning == " + mCountdownRunning);
             setButtons();
         }
 
         if (mPrefs.contains(CLEAR_TIMER_KEY)) {
             mClearTimer = mPrefs.getBoolean(CLEAR_TIMER_KEY, false);
-            Log.i(TAG, "mClearTimer == " + mClearTimer);
+            //Log.i(TAG, "mClearTimer == " + mClearTimer);
         }
 
         if (mPrefs.contains(START_TIME_STRING_KEY)) {
             mStartTime = mPrefs.getString(START_TIME_STRING_KEY, null);
-            Log.i(TAG, "mStartTime == " + mStartTime);
+            //Log.i(TAG, "mStartTime == " + mStartTime);
         }
 
         if (mPrefs.contains(REMAINING_DISTANCE_KEY)) {
             mDistance = mPrefs.getInt(REMAINING_DISTANCE_KEY, 1000);
-            Log.i(TAG, "mDistance == " + mDistance);
             mDistanceView.setText(String.valueOf(mDistance));
+            //Log.i(TAG, "mDistance == " + mDistance);
         }
 
         if (mPrefs.contains(ELAPSED_TIME_KEY)) {
             mElapsedTime = mPrefs.getLong(ELAPSED_TIME_KEY, 0);
-            Log.i(TAG, "mElapsedTime == " + mElapsedTime);
+            //Log.i(TAG, "mElapsedTime == " + mElapsedTime);
         }
 
         if (mPrefs.contains(AVEGARE_SPEED_KEY)) {
             mAverageSpeed = mPrefs.getFloat(AVEGARE_SPEED_KEY, 0);
-            Log.i(TAG, "mAverageSpeed == " + mAverageSpeed);
+            //Log.i(TAG, "mAverageSpeed == " + mAverageSpeed);
         }
 
         updateUI();
@@ -283,25 +292,25 @@ public class MainActivity extends Activity {
         Log.i(TAG, "onSaveInstanceState");
 
         savedInstanceState.putBoolean(COUNTDOWN_RUNNING_KEY, mCountdownRunning);
-        Log.i(TAG, "mCountdownRunning == " + mCountdownRunning);
+        //Log.i(TAG, "mCountdownRunning == " + mCountdownRunning);
 
         savedInstanceState.putBoolean(RESUME_COUNTDOWN_KEY, mResumeCountdown);
-        Log.i(TAG, "mResumeCountdown == " + mResumeCountdown);
+        //Log.i(TAG, "mResumeCountdown == " + mResumeCountdown);
 
         savedInstanceState.putBoolean(CLEAR_TIMER_KEY, mClearTimer);
-        Log.i(TAG, "mClearTimer == " + mClearTimer);
+        //Log.i(TAG, "mClearTimer == " + mClearTimer);
 
         savedInstanceState.putString(START_TIME_STRING_KEY, mStartTime);
-        Log.i(TAG, "mStartTime == " + mStartTime);
+        //Log.i(TAG, "mStartTime == " + mStartTime);
 
         savedInstanceState.putInt(REMAINING_DISTANCE_KEY, mDistance);
-        Log.i(TAG, "mDistance == " + mDistance);
+        //Log.i(TAG, "mDistance == " + mDistance);
 
         savedInstanceState.putLong(ELAPSED_TIME_KEY, mElapsedTime);
-        Log.i(TAG, "mElapsedTime == " + mElapsedTime);
+        //Log.i(TAG, "mElapsedTime == " + mElapsedTime);
 
         savedInstanceState.putFloat(AVEGARE_SPEED_KEY, mAverageSpeed);
-        Log.i(TAG, "mAverageSpeed == " + mAverageSpeed);
+        //Log.i(TAG, "mAverageSpeed == " + mAverageSpeed);
 
         super.onSaveInstanceState(savedInstanceState);
     }
@@ -315,25 +324,25 @@ public class MainActivity extends Activity {
         SharedPreferences.Editor ed = mPrefs.edit();
 
         ed.putBoolean(COUNTDOWN_RUNNING_KEY, mCountdownRunning);
-        Log.i(TAG, "mCountdownRunning == " + mCountdownRunning);
+        //Log.i(TAG, "mCountdownRunning == " + mCountdownRunning);
 
         ed.putBoolean(RESUME_COUNTDOWN_KEY, mResumeCountdown);
-        Log.i(TAG, "mResumeCountdown == " + mResumeCountdown);
+        //Log.i(TAG, "mResumeCountdown == " + mResumeCountdown);
 
         ed.putBoolean(CLEAR_TIMER_KEY, mClearTimer);
-        Log.i(TAG, "mClearTimer == " + mClearTimer);
+        //Log.i(TAG, "mClearTimer == " + mClearTimer);
 
         ed.putString(START_TIME_STRING_KEY, mStartTime);
-        Log.i(TAG, "mStartTime == " + mStartTime);
+        //Log.i(TAG, "mStartTime == " + mStartTime);
 
         ed.putLong(ELAPSED_TIME_KEY, mElapsedTime);
-        Log.i(TAG, "mElapsedTime == " + mElapsedTime);
+        //Log.i(TAG, "mElapsedTime == " + mElapsedTime);
 
         ed.putInt(REMAINING_DISTANCE_KEY, mDistance);
-        Log.i(TAG, "mDistance == " + mDistance);
+        //Log.i(TAG, "mDistance == " + mDistance);
 
         ed.putFloat(AVEGARE_SPEED_KEY, mAverageSpeed);
-        Log.i(TAG, "mAverageSpeed == " + mAverageSpeed);
+        //Log.i(TAG, "mAverageSpeed == " + mAverageSpeed);
 
         ed.commit();
 
@@ -376,11 +385,13 @@ public class MainActivity extends Activity {
 
             //Log.i(TAG, "onReceive");
 
+            // Location changed
             if (intent.hasExtra(Constants.STATUS.LOCATION_CHANGED)) {
                 int distance = intent.getIntExtra(Constants.STATUS.LOCATION_CHANGED, 0);
                 Log.i(TAG, "Location changed: " + distance);
                 if (mCountdownRunning && distance > 0) {
                     if (mDistance - distance <= 0) {
+                        // Distance left == 0
                         mDistanceView.setText("0");
                         mStartButton.setText(R.string.start);
                         mStartButton.setEnabled(false);
@@ -392,19 +403,30 @@ public class MainActivity extends Activity {
                         mDistanceView.setText(String.valueOf(mDistance - distance));
                     }
                 }
+            // Elapsed time changed
             } else if (intent.hasExtra(Constants.STATUS.ELAPSED_TIME_CHANGED)) {
                 mElapsedTime = intent.getLongExtra(Constants.STATUS.ELAPSED_TIME_CHANGED, 0);
                 Log.i(TAG, "Elapsed time changed: " + mElapsedTime);
+            // GPS status changed
             } else if (intent.hasExtra(Constants.STATUS.GPS_OK)) {
                 int satellites = intent.getIntExtra(Constants.STATUS.GPS_OK, 0);
+
+                if (!mCountdownRunning) {
+                    mStartButton.setEnabled(true);
+                }
+
                 if (satellites != 0) {
                     Log.i(TAG, "GPS Ok: " + satellites);
                     mGpsStatus.setText(R.string.gps_ok);
                 } else {
                     mGpsStatus.setText(R.string.gps_not_ok);
                 }
+            // GPS status changed to not OK
             } else if (intent.hasExtra(Constants.STATUS.GPS_NOT_OK)) {
                 Log.i(TAG, "GPS Not Ok");
+                if (!mCountdownRunning) {
+                    mStartButton.setEnabled(false);
+                }
                 mGpsStatus.setText(R.string.gps_not_ok);
             }
             updateUI();
