@@ -85,7 +85,6 @@ public class MainActivity extends Activity {
             updateValuesFromSharedPreferences();
         }
 
-
         mServiceIntent = new Intent(this, LocationService.class);
         mServiceIntent.setAction(Constants.ACTION.START_LOCATION_UPDATES);
         startService(mServiceIntent);
@@ -98,6 +97,10 @@ public class MainActivity extends Activity {
      * Handles the Start button
      */
     public void startButtonHandler(View view) {
+        // Do nothing is distance == 0
+        if (mDistanceView.getText().toString().equals("0")) {
+            return;
+        }
         // Start/resume countdown
         if (!mCountdownRunning) {
             // Resume
@@ -119,17 +122,14 @@ public class MainActivity extends Activity {
 
             startService(mServiceIntent);
         } else {
+            // Pause countdown
             mCountdownRunning = false;
-            if (mDistanceView.getText().toString().equals("0")) {
-                mStartButton.setText(R.string.start);
-                mStartButton.setEnabled(false);
-            } else {
-                mStartButton.setText(R.string.resume);
-                mResumeCountdown = true;
+            mStartButton.setText(R.string.resume);
+            mResumeCountdown = true;
 
-                mServiceIntent.setAction(Constants.ACTION.PAUSE_TIMER);
-                startService(mServiceIntent);
-            }
+            mServiceIntent.setAction(Constants.ACTION.PAUSE_TIMER);
+            startService(mServiceIntent);
+
             mResetButton.setEnabled(true);
         }
     }
