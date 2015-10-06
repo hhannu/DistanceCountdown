@@ -1,4 +1,4 @@
-package com.example.hth.distancecountdown;
+package com.github.hhannu.distancecountdown;
 
 /**
  * Created by hth on 9/16/15.

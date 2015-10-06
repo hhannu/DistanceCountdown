@@ -1,4 +1,4 @@
-package com.example.hth.distancecountdown;
+package com.github.hhannu.distancecountdown;
 
 import android.app.Application;
 import android.test.ApplicationTestCase;
