@@ -405,8 +405,11 @@ public class MainActivity extends Activity {
                 }
             // Elapsed time changed
             } else if (intent.hasExtra(Constants.STATUS.ELAPSED_TIME_CHANGED)) {
-                mElapsedTime = intent.getLongExtra(Constants.STATUS.ELAPSED_TIME_CHANGED, 0);
                 Log.i(TAG, "Elapsed time changed: " + mElapsedTime);
+
+                if (mCountdownRunning) {
+                    mElapsedTime = intent.getLongExtra(Constants.STATUS.ELAPSED_TIME_CHANGED, 0);
+                }
             // GPS status changed
             } else if (intent.hasExtra(Constants.STATUS.GPS_OK)) {
                 int satellites = intent.getIntExtra(Constants.STATUS.GPS_OK, 0);
@@ -424,6 +427,7 @@ public class MainActivity extends Activity {
             // GPS status changed to not OK
             } else if (intent.hasExtra(Constants.STATUS.GPS_NOT_OK)) {
                 Log.i(TAG, "GPS Not Ok");
+
                 if (!mCountdownRunning) {
                     mStartButton.setEnabled(false);
                 }

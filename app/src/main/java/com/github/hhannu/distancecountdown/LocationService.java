@@ -63,22 +63,19 @@ public class LocationService extends Service {
                         .getSystemService(Context.LOCATION_SERVICE);
             }
 
-            mLocationManager.addGpsStatusListener(MyGPSListener);
-
             requestLocationUpdates(1000);
+            mLocationManager.addGpsStatusListener(MyGPSListener);
         }
         /**
          * Stops Location updates
          */
         else if (intent.getAction().equals(Constants.ACTION.STOP_LOCATION_UPDATES)) {
             Log.d(TAG, "Stop Location Updates");
-            if (mTimer != null) {
-                mTimer.cancel();
-                mTimer = null;
-            }
+
             mTimerRunning = false;
             stopForeground(true);
             stopLocationManager();
+            stopTimer();
             stopSelf();
         }
         /**
@@ -137,16 +134,18 @@ public class LocationService extends Service {
      * @param time in milliseconds
      */
     private void requestLocationUpdates(int time) {
+        if (mLocationManager != null) {
 
-        mLocationManager.removeUpdates(mLocationListener);
+            try {
+                mLocationManager.removeUpdates(mLocationListener);
 
-        try {
-            mLocationManager.requestLocationUpdates(
-                    LocationManager.GPS_PROVIDER, time, 2, mLocationListener);
-        } catch (java.lang.SecurityException ex) {
-            Log.e(TAG, "Failed to request location update. ", ex);
-        } catch (IllegalArgumentException ex) {
-            Log.e(TAG, "GPS provider doesn't exist. " + ex.getMessage());
+                mLocationManager.requestLocationUpdates(
+                        LocationManager.GPS_PROVIDER, time, 2, mLocationListener);
+            } catch (java.lang.SecurityException ex) {
+                Log.e(TAG, "Failed to request location update. ", ex);
+            } catch (IllegalArgumentException ex) {
+                Log.e(TAG, "GPS provider doesn't exist. " + ex.getMessage());
+            }
         }
     }
 
@@ -183,8 +182,16 @@ public class LocationService extends Service {
     public void onDestroy() {
         Log.d(TAG, "onDestroy()");
 
+        stopTimer();
         stopLocationManager();
         stopSelf();
+    }
+
+    private void stopTimer() {
+        if (mTimer != null) {
+            mTimer.cancel();
+            mTimer = null;
+        }
     }
 
     private void stopLocationManager() {
@@ -328,16 +335,22 @@ public class LocationService extends Service {
                 case GpsStatus.GPS_EVENT_SATELLITE_STATUS:
                     //Log.d("MyGPSListener", "gps event satellite status");
                     int count = 0;
-                    GpsStatus status = mLocationManager.getGpsStatus(null);
-                    for (GpsSatellite sat : status.getSatellites()) {
-                        if (sat.usedInFix()) {
-                            count++;
+                    if (mLocationManager != null) {
+                        GpsStatus status = mLocationManager.getGpsStatus(null);
+
+                        if (status != null) {
+                            for (GpsSatellite sat : status.getSatellites()) {
+                                if (sat.usedInFix()) {
+                                    count++;
+                                }
+                            }
+                            if (count != lastCount) {
+                                Log.d("MyGPSListener", "gps event satellite status " + count);
+                                intent = locationIntent.putExtra(Constants.STATUS.GPS_OK, count);
+                                sendBroadcast(intent);
+                                lastCount = count;
+                            }
                         }
-                    }
-                    if(count != lastCount) {
-                        intent = locationIntent.putExtra(Constants.STATUS.GPS_OK, count);
-                        sendBroadcast(intent);
-                        lastCount = count;
                     }
                     break;
             }
