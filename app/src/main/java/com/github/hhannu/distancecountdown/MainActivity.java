@@ -399,8 +399,8 @@ public class MainActivity extends Activity {
                         mStartButton.setEnabled(false);
                         mResumeCountdown = false;
                         mResetButton.setEnabled(true);
-                        mServiceIntent.setAction(Constants.ACTION.STOP_TIMER);
-                        startService(mServiceIntent);
+                        //mServiceIntent.setAction(Constants.ACTION.STOP_TIMER);
+                        //startService(mServiceIntent);
                     } else {
                         mDistanceView.setText(String.valueOf(mDistance - distance));
                     }

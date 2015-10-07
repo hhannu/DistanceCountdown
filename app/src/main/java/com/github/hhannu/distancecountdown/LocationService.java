@@ -63,7 +63,7 @@ public class LocationService extends Service {
                         .getSystemService(Context.LOCATION_SERVICE);
             }
 
-            requestLocationUpdates(1000);
+            requestLocationUpdates(5000);
             mLocationManager.addGpsStatusListener(MyGPSListener);
         }
         /**
@@ -85,6 +85,8 @@ public class LocationService extends Service {
             Log.d(TAG, "Start Timer");
 
             mTargetDistance = intent.getIntExtra(Constants.STATUS.DISTANCE, 0);
+
+            requestLocationUpdates(1000);
 
             startForeground(Constants.NOTIFICATION_ID.FOREGROUND_SERVICE, createNotification(false));
 
@@ -113,17 +115,19 @@ public class LocationService extends Service {
             Log.d(TAG, "Stop Timer");
             mNotificationManager.notify(Constants.NOTIFICATION_ID.FOREGROUND_SERVICE,
                     createNotification(false));
-            mTimerRunning = false;
+            stopTimer();
+            requestLocationUpdates(5000);
         }
         /**
          * Reset
          */
         else if (intent.getAction().equals(Constants.ACTION.RESET)) {
             Log.d(TAG, "Reset");
-            mTimerRunning = false;
             mDistance = 0;
             mElapsedTime = 0;
+            stopTimer();
             stopForeground(true);
+            requestLocationUpdates(5000);
         }
 
         return START_STICKY;
@@ -134,6 +138,7 @@ public class LocationService extends Service {
      * @param time in milliseconds
      */
     private void requestLocationUpdates(int time) {
+        Log.d(TAG, "requestLocationUpdates(" + time + ")");
         if (mLocationManager != null) {
 
             try {
@@ -188,6 +193,10 @@ public class LocationService extends Service {
     }
 
     private void stopTimer() {
+        Log.d(TAG, "stopTimer()");
+
+        mTimerRunning = false;
+
         if (mTimer != null) {
             mTimer.cancel();
             mTimer = null;
@@ -273,9 +282,9 @@ public class LocationService extends Service {
                     mContext.sendBroadcast(intent);
                     // Check if we have reached the target distance
                     if(mDistance >= mTargetDistance) {
-                        stopTimer();
                         mNotificationManager.notify(Constants.NOTIFICATION_ID.FOREGROUND_SERVICE,
                             createNotification(true));
+                        stopTimer();
                     }
                     else {
                         mNotificationManager.notify(Constants.NOTIFICATION_ID.FOREGROUND_SERVICE,
