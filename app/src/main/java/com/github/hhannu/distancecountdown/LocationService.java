@@ -112,7 +112,7 @@ public class LocationService extends Service {
         else if (intent.getAction().equals(Constants.ACTION.STOP_TIMER)) {
             Log.d(TAG, "Stop Timer");
             mNotificationManager.notify(Constants.NOTIFICATION_ID.FOREGROUND_SERVICE,
-                    createNotification(true));
+                    createNotification(false));
             mTimerRunning = false;
         }
         /**
@@ -271,8 +271,16 @@ public class LocationService extends Service {
                     Intent intent = locationIntent.putExtra(
                             Constants.STATUS.LOCATION_CHANGED, mDistance);
                     mContext.sendBroadcast(intent);
-                    mNotificationManager.notify(Constants.NOTIFICATION_ID.FOREGROUND_SERVICE,
+                    // Check if we have reached the target distance
+                    if(mDistance >= mTargetDistance) {
+                        stopTimer();
+                        mNotificationManager.notify(Constants.NOTIFICATION_ID.FOREGROUND_SERVICE,
+                            createNotification(true));
+                    }
+                    else {
+                        mNotificationManager.notify(Constants.NOTIFICATION_ID.FOREGROUND_SERVICE,
                             createNotification(false));
+                    }
                 }
             }
 

@@ -318,40 +318,42 @@ public class MainActivity extends Activity {
 
     @Override
     protected void onPause() {
-        Log.i(TAG, "onPause");
+        Log.i(TAG, "onPause, isFinishing() " + isFinishing());
         super.onPause();
 
-        SharedPreferences.Editor ed = mPrefs.edit();
+        if(isFinishing()) {
+            SharedPreferences.Editor ed = mPrefs.edit();
 
-        ed.putBoolean(COUNTDOWN_RUNNING_KEY, mCountdownRunning);
-        //Log.i(TAG, "mCountdownRunning == " + mCountdownRunning);
+            ed.putBoolean(COUNTDOWN_RUNNING_KEY, mCountdownRunning);
+            //Log.i(TAG, "mCountdownRunning == " + mCountdownRunning);
 
-        ed.putBoolean(RESUME_COUNTDOWN_KEY, mResumeCountdown);
-        //Log.i(TAG, "mResumeCountdown == " + mResumeCountdown);
+            ed.putBoolean(RESUME_COUNTDOWN_KEY, mResumeCountdown);
+            //Log.i(TAG, "mResumeCountdown == " + mResumeCountdown);
 
-        ed.putBoolean(CLEAR_TIMER_KEY, mClearTimer);
-        //Log.i(TAG, "mClearTimer == " + mClearTimer);
+            ed.putBoolean(CLEAR_TIMER_KEY, mClearTimer);
+            //Log.i(TAG, "mClearTimer == " + mClearTimer);
 
-        ed.putString(START_TIME_STRING_KEY, mStartTime);
-        //Log.i(TAG, "mStartTime == " + mStartTime);
+            ed.putString(START_TIME_STRING_KEY, mStartTime);
+            //Log.i(TAG, "mStartTime == " + mStartTime);
 
-        ed.putLong(ELAPSED_TIME_KEY, mElapsedTime);
-        //Log.i(TAG, "mElapsedTime == " + mElapsedTime);
+            ed.putLong(ELAPSED_TIME_KEY, mElapsedTime);
+            //Log.i(TAG, "mElapsedTime == " + mElapsedTime);
 
-        ed.putInt(REMAINING_DISTANCE_KEY, mDistance);
-        //Log.i(TAG, "mDistance == " + mDistance);
+            ed.putInt(REMAINING_DISTANCE_KEY, mDistance);
+            //Log.i(TAG, "mDistance == " + mDistance);
 
-        ed.putFloat(AVEGARE_SPEED_KEY, mAverageSpeed);
-        //Log.i(TAG, "mAverageSpeed == " + mAverageSpeed);
+            ed.putFloat(AVEGARE_SPEED_KEY, mAverageSpeed);
+            //Log.i(TAG, "mAverageSpeed == " + mAverageSpeed);
 
-        ed.commit();
+            ed.commit();
 
-        if (!mCountdownRunning && !mResumeCountdown) {
-            mServiceIntent.setAction(Constants.ACTION.STOP_LOCATION_UPDATES);
-            startService(mServiceIntent);
+            if (!mCountdownRunning && !mResumeCountdown) {
+                mServiceIntent.setAction(Constants.ACTION.STOP_LOCATION_UPDATES);
+                startService(mServiceIntent);
+            }
+
+            unregisterReceiver(mMyBroadcastReceiver);
         }
-
-        unregisterReceiver(mMyBroadcastReceiver);
     }
 
     @Override
