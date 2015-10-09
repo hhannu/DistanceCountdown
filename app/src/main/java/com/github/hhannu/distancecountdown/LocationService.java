@@ -39,7 +39,8 @@ public class LocationService extends Service {
     private int mDistance = 0;
     private int mTargetDistance = 0;
 
-    private LocationListener mLocationListener = new MyLocationListener(LocationManager.GPS_PROVIDER, this);
+    private LocationListener mLocationListener =
+            new MyLocationListener(LocationManager.GPS_PROVIDER, this);
 
     private Intent locationIntent = new Intent(Constants.ACTION.BROADCAST);
     private NotificationManager mNotificationManager;
@@ -52,84 +53,86 @@ public class LocationService extends Service {
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
         Log.d(TAG, "onStartCommand()");
-        /**
-         * Starts Location updates
-         */
-        if (intent.getAction().equals(Constants.ACTION.START_LOCATION_UPDATES)) {
-            Log.d(TAG, "Start Location Updates");
 
-            if (mLocationManager == null) {
-                mLocationManager = (LocationManager) getApplicationContext()
-                        .getSystemService(Context.LOCATION_SERVICE);
+        if(intent != null) {
+
+            /**
+             * Starts Location updates
+             */
+            if (intent.getAction().equals(Constants.ACTION.START_LOCATION_UPDATES)) {
+                Log.d(TAG, "Start Location Updates");
+
+                if (mLocationManager == null) {
+                    mLocationManager = (LocationManager) getApplicationContext()
+                            .getSystemService(Context.LOCATION_SERVICE);
+                }
+
+                requestLocationUpdates(5000);
+                mLocationManager.addGpsStatusListener(MyGPSListener);
             }
+            /**
+             * Stops Location updates
+             */
+            else if (intent.getAction().equals(Constants.ACTION.STOP_LOCATION_UPDATES)) {
+                Log.d(TAG, "Stop Location Updates");
 
-            requestLocationUpdates(5000);
-            mLocationManager.addGpsStatusListener(MyGPSListener);
-        }
-        /**
-         * Stops Location updates
-         */
-        else if (intent.getAction().equals(Constants.ACTION.STOP_LOCATION_UPDATES)) {
-            Log.d(TAG, "Stop Location Updates");
+                mTimerRunning = false;
+                stopForeground(true);
+                stopLocationManager();
+                stopTimer();
+                stopSelf();
+            }
+            /**
+             * Starts timer
+             */
+            else if (intent.getAction().equals(Constants.ACTION.START_TIMER)) {
+                Log.d(TAG, "Start Timer");
 
-            mTimerRunning = false;
-            stopForeground(true);
-            stopLocationManager();
-            stopTimer();
-            stopSelf();
-        }
-        /**
-         * Starts timer
-         */
-        else if (intent.getAction().equals(Constants.ACTION.START_TIMER)) {
-            Log.d(TAG, "Start Timer");
+                mTargetDistance = intent.getIntExtra(Constants.STATUS.DISTANCE, 0);
 
-            mTargetDistance = intent.getIntExtra(Constants.STATUS.DISTANCE, 0);
+                requestLocationUpdates(1000);
 
-            requestLocationUpdates(1000);
+                startForeground(Constants.NOTIFICATION_ID.FOREGROUND_SERVICE,
+                        createNotification(false));
 
-            startForeground(Constants.NOTIFICATION_ID.FOREGROUND_SERVICE, createNotification(false));
+                if (mTimer == null) {
+                    mElapsedTime = 0;
+                    mTimer = new Timer();
+                    initializeTimerTask();
+                    mTimer.schedule(mTimerTask, 1000, 1000);
+                }
 
-            if (mTimer == null) {
+                mTimerRunning = true;
+            }
+            /**
+             * Pauses/resumes timer
+             */
+            else if (intent.getAction().equals(Constants.ACTION.PAUSE_TIMER)) {
+                Log.d(TAG, "Pause Timer " + mTimerRunning);
+                mTimerRunning = !mTimerRunning;
+                mNotificationManager.notify(Constants.NOTIFICATION_ID.FOREGROUND_SERVICE,
+                        createNotification(false));
+            }
+            /**
+             * Stops timer
+             */
+            else if (intent.getAction().equals(Constants.ACTION.STOP_TIMER)) {
+                Log.d(TAG, "Stop Timer");
+                mNotificationManager.notify(Constants.NOTIFICATION_ID.FOREGROUND_SERVICE,
+                        createNotification(false));
+                stopTimer();
+            }
+            /**
+             * Reset
+             */
+            else if (intent.getAction().equals(Constants.ACTION.RESET)) {
+                Log.d(TAG, "Reset");
+                mDistance = 0;
                 mElapsedTime = 0;
-                mTimer = new Timer();
-                initializeTimerTask();
-                mTimer.schedule(mTimerTask, 1000, 1000);
+                stopTimer();
+                stopForeground(true);
             }
-
-            mTimerRunning = true;
         }
-        /**
-         * Pauses/resumes timer
-         */
-        else if (intent.getAction().equals(Constants.ACTION.PAUSE_TIMER)) {
-            Log.d(TAG, "Pause Timer " + mTimerRunning);
-            mTimerRunning = !mTimerRunning;
-            mNotificationManager.notify(Constants.NOTIFICATION_ID.FOREGROUND_SERVICE,
-                    createNotification(false));
-        }
-        /**
-         * Stops timer
-         */
-        else if (intent.getAction().equals(Constants.ACTION.STOP_TIMER)) {
-            Log.d(TAG, "Stop Timer");
-            mNotificationManager.notify(Constants.NOTIFICATION_ID.FOREGROUND_SERVICE,
-                    createNotification(false));
-            stopTimer();
-            requestLocationUpdates(5000);
-        }
-        /**
-         * Reset
-         */
-        else if (intent.getAction().equals(Constants.ACTION.RESET)) {
-            Log.d(TAG, "Reset");
-            mDistance = 0;
-            mElapsedTime = 0;
-            stopTimer();
-            stopForeground(true);
-            requestLocationUpdates(5000);
-        }
-
         return START_STICKY;
     }
 
@@ -187,6 +190,7 @@ public class LocationService extends Service {
     public void onDestroy() {
         Log.d(TAG, "onDestroy()");
 
+        mNotificationManager.cancel(Constants.NOTIFICATION_ID.FOREGROUND_SERVICE);
         stopTimer();
         stopLocationManager();
         stopSelf();
@@ -196,6 +200,7 @@ public class LocationService extends Service {
         Log.d(TAG, "stopTimer()");
 
         mTimerRunning = false;
+        requestLocationUpdates(5000);
 
         if (mTimer != null) {
             mTimer.cancel();
@@ -361,7 +366,7 @@ public class LocationService extends Service {
                                     count++;
                                 }
                             }
-                            if (count != lastCount) {
+                            if (count > 0 && count != lastCount) {
                                 Log.d("MyGPSListener", "gps event satellite status " + count);
                                 intent = locationIntent.putExtra(Constants.STATUS.GPS_OK, count);
                                 sendBroadcast(intent);

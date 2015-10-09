@@ -28,7 +28,6 @@ public class MainActivity extends Activity {
     // Keys for storing activity state in the Bundle.
     protected final static String COUNTDOWN_RUNNING_KEY = "countdown-running-key";
     protected final static String RESUME_COUNTDOWN_KEY = "resume-countdown-key";
-    protected final static String CLEAR_TIMER_KEY = "clear-timer-key";
     protected final static String START_TIME_STRING_KEY = "start-time-string-key";
     protected final static String REMAINING_DISTANCE_KEY = "remaining-distance-key";
     protected final static String ELAPSED_TIME_KEY = "elapsed-time-key";
@@ -49,7 +48,6 @@ public class MainActivity extends Activity {
     private int mDistance;
     private long mElapsedTime;
     private float mAverageSpeed;
-    private boolean mClearTimer;
 
     private Intent mServiceIntent;
 
@@ -149,7 +147,6 @@ public class MainActivity extends Activity {
         mChronometer.setText("00:00:00");
         mSpeedView.setText("0.0 km/h");
         mResumeCountdown = false;
-        mClearTimer = true;
         mElapsedTime = 0;
     }
 
@@ -181,7 +178,7 @@ public class MainActivity extends Activity {
 
         if (mElapsedTime > 0 && distance > 0) {
             double speed = distance / mElapsedTime;
-            mSpeedView.setText(Math.round(36d * speed) / 10d + " km/h");
+            mSpeedView.setText(String.format("%.1f", 3.6 * speed) + " km/h");
         }
 
         long secs = mElapsedTime;
@@ -210,11 +207,6 @@ public class MainActivity extends Activity {
             mCountdownRunning = savedInstanceState.getBoolean(COUNTDOWN_RUNNING_KEY, false);
             //Log.i(TAG, "mCountdownRunning == " + mCountdownRunning);
             setButtons();
-        }
-
-        if (savedInstanceState.keySet().contains(CLEAR_TIMER_KEY)) {
-            mClearTimer = savedInstanceState.getBoolean(CLEAR_TIMER_KEY, false);
-            //Log.i(TAG, "mClearTimer == " + mClearTimer);
         }
 
         if (savedInstanceState.keySet().contains(START_TIME_STRING_KEY)) {
@@ -255,11 +247,6 @@ public class MainActivity extends Activity {
             setButtons();
         }
 
-        if (mPrefs.contains(CLEAR_TIMER_KEY)) {
-            mClearTimer = mPrefs.getBoolean(CLEAR_TIMER_KEY, false);
-            //Log.i(TAG, "mClearTimer == " + mClearTimer);
-        }
-
         if (mPrefs.contains(START_TIME_STRING_KEY)) {
             mStartTime = mPrefs.getString(START_TIME_STRING_KEY, null);
             //Log.i(TAG, "mStartTime == " + mStartTime);
@@ -297,9 +284,6 @@ public class MainActivity extends Activity {
         savedInstanceState.putBoolean(RESUME_COUNTDOWN_KEY, mResumeCountdown);
         //Log.i(TAG, "mResumeCountdown == " + mResumeCountdown);
 
-        savedInstanceState.putBoolean(CLEAR_TIMER_KEY, mClearTimer);
-        //Log.i(TAG, "mClearTimer == " + mClearTimer);
-
         savedInstanceState.putString(START_TIME_STRING_KEY, mStartTime);
         //Log.i(TAG, "mStartTime == " + mStartTime);
 
@@ -330,12 +314,13 @@ public class MainActivity extends Activity {
             ed.putBoolean(RESUME_COUNTDOWN_KEY, mResumeCountdown);
             //Log.i(TAG, "mResumeCountdown == " + mResumeCountdown);
 
-            ed.putBoolean(CLEAR_TIMER_KEY, mClearTimer);
-            //Log.i(TAG, "mClearTimer == " + mClearTimer);
-
             ed.putString(START_TIME_STRING_KEY, mStartTime);
             //Log.i(TAG, "mStartTime == " + mStartTime);
 
+            if(!mCountdownRunning && !mResumeCountdown) {
+                mElapsedTime = 0;
+                mAverageSpeed = 0;
+            }
             ed.putLong(ELAPSED_TIME_KEY, mElapsedTime);
             //Log.i(TAG, "mElapsedTime == " + mElapsedTime);
 
@@ -390,13 +375,14 @@ public class MainActivity extends Activity {
             // Location changed
             if (intent.hasExtra(Constants.STATUS.LOCATION_CHANGED)) {
                 int distance = intent.getIntExtra(Constants.STATUS.LOCATION_CHANGED, 0);
-                Log.i(TAG, "Location changed: " + distance);
+                Log.d(TAG, "Location changed: " + distance);
                 if (mCountdownRunning && distance > 0) {
                     if (mDistance - distance <= 0) {
                         // Distance left == 0
                         mDistanceView.setText("0");
                         mStartButton.setText(R.string.start);
                         mStartButton.setEnabled(false);
+                        mCountdownRunning = false;
                         mResumeCountdown = false;
                         mResetButton.setEnabled(true);
                         //mServiceIntent.setAction(Constants.ACTION.STOP_TIMER);
@@ -407,7 +393,7 @@ public class MainActivity extends Activity {
                 }
             // Elapsed time changed
             } else if (intent.hasExtra(Constants.STATUS.ELAPSED_TIME_CHANGED)) {
-                Log.i(TAG, "Elapsed time changed: " + mElapsedTime);
+                //Log.d(TAG, "Elapsed time changed: " + mElapsedTime);
 
                 if (mCountdownRunning) {
                     mElapsedTime = intent.getLongExtra(Constants.STATUS.ELAPSED_TIME_CHANGED, 0);
@@ -421,14 +407,14 @@ public class MainActivity extends Activity {
                 }
 
                 if (satellites != 0) {
-                    Log.i(TAG, "GPS Ok: " + satellites);
+                    Log.d(TAG, "GPS Ok: " + satellites);
                     mGpsStatus.setText(R.string.gps_ok);
                 } else {
                     mGpsStatus.setText(R.string.gps_not_ok);
                 }
             // GPS status changed to not OK
             } else if (intent.hasExtra(Constants.STATUS.GPS_NOT_OK)) {
-                Log.i(TAG, "GPS Not Ok");
+                Log.d(TAG, "GPS Not Ok");
 
                 if (!mCountdownRunning) {
                     mStartButton.setEnabled(false);
